@@ -1,5 +1,5 @@
 const { Alert, AlertReadStatus } = require('../models/Alert');
-
+const { Op } = require('sequelize'); // Import the Op operator from Sequelize
 // Get all alerts with read status for a specific user
 const getAlerts = async (req, res) => {
   try {
@@ -33,6 +33,48 @@ const getAllAlerts = async (req, res) => {
   }
 };
 
+// Get all messages
+const getMessages = async (req, res) => {
+  try {
+    const { role, id: userId } = req.user; // Extract user role and ID
+    let alertConditions = {};
+    if (role === "member") {
+        alertConditions.division = { 
+          [Op.in]: ["メンバー", "全員"],
+         };       
+    }else if(role === "user"){
+      alertConditions.division = { [Op.in]: ["ユーザー", "全員"] };
+    }else if(role === "manager"){
+      alertConditions.division = { [Op.in]: ["管理者"] };
+    }
+
+    const alerts = await Alert.findAll({
+      where: alertConditions,
+      include: [
+        {
+          model: AlertReadStatus,
+          as: "readStatuses",
+          required: false, 
+          where: { user_id: userId }, 
+          attributes: ["alert_id", "read_status"],
+        },
+      ],
+    });
+
+    const unreadAlerts = alerts.filter(alert => {
+      if (alert.readStatuses.length === 0) {
+        if (alert.division === "メンバー") {
+          return alert.user_id === userId || alert.user_id === 0 ;
+        }
+        return alert;
+      }      
+    });
+   
+    res.json({unreadAlerts});
+  } catch (err) { 
+    res.status(500).json({ message: 'メッセージの取得に失敗しました', error: err.message });
+  }
+};
 
 // Create new alert
 const createAlert = async (req, res) => {
@@ -65,9 +107,9 @@ const updateAlert = async (req, res) => {
 // Mark alert as read for a specific user
 const markAsRead = async (req, res) => {
   try {
+  
     const { id } = req.params;
     const userId = req.user?.id; // Assuming user info is available in req.user
-
     // Find or create read status record
     const [readStatus, created] = await AlertReadStatus.findOrCreate({
       where: {
@@ -90,7 +132,6 @@ const markAsRead = async (req, res) => {
         required: false
       }]
     });
-
     res.json({
       ...updatedAlert.toJSON(),
       readStatus: 'read'
@@ -121,6 +162,7 @@ const deleteAlert = async (req, res) => {
 
 module.exports = {
   getAlerts,
+  getMessages,
   getAllAlerts,
   createAlert,
   updateAlert,

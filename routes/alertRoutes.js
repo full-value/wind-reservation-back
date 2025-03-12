@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { 
   getAlerts,
+  getMessages,
   getAllAlerts,
   createAlert, 
   updateAlert,
@@ -11,6 +12,7 @@ const {
 
 // Update routes to use controller functions
 router.get('/', getAlerts);
+router.get('/getMessages', getMessages);
 router.get('/all', getAllAlerts);
 router.post('/', createAlert);
 router.put('/:id', updateAlert);

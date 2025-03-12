@@ -54,7 +54,7 @@ const AlertReadStatus = sequelize.define('AlertReadStatus', {
   },
   user_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'Users',
       key: 'id' 
@@ -70,7 +70,7 @@ const AlertReadStatus = sequelize.define('AlertReadStatus', {
 });
 
 // Set up associations
-Alert.hasMany(AlertReadStatus);
-AlertReadStatus.belongsTo(Alert);
+Alert.hasMany(AlertReadStatus, { foreignKey: "alert_id", as: "readStatuses" });
+AlertReadStatus.belongsTo(Alert, { foreignKey: "alert_id", as: "alert" });
 
 module.exports = { Alert, AlertReadStatus };

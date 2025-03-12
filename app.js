@@ -94,9 +94,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/reservation',reservationRoutes);
 app.use('/api/flat',flatRoutes);
 app.use('/api/work',workRoutes);
-app.use('/api/user',userRoutes);
-app.use('/api/log',authenticate,logRoutes);
-app.use('/api/alert',authenticate,alertRoutes);
+app.use('/api/user', authenticate, userRoutes);
+app.use('/api/log',  authenticate, logRoutes);
+app.use('/api/alert',authenticate, alertRoutes);
 
 sequelize.sync()
   .then(() => {

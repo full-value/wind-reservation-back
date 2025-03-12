@@ -63,6 +63,11 @@ const login = async (req, res) => {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
+    res.cookie('userRole', user.role, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
     
     res.json({ message: 'ログインに成功しました', accessToken ,refreshToken,role:user.role });
   

@@ -1,5 +1,6 @@
-const { Op } = require('sequelize'); // Import the Op operator from Sequelize
 const Log = require('../models/Log');
+const { Alert, AlertReadStatus } = require('../models/Alert');
+const { Op } = require('sequelize'); // Import the Op operator from Sequelize
 const limit = 10; 
 
 const getErrorData = async (req, res) => {  
@@ -112,12 +113,42 @@ const getNotificationNum = async (req, res) => {
         readStatus:'unread'
       }
     });
-    const MessageNum = await Log.count({
-      where: {
-        level: 'info',
-        readStatus:'unread'
-      }
-    });        
+
+    const { role, id: userId } = req.user; // Extract user role and ID
+    let alertConditions = {};
+    if (role === "member") {
+        alertConditions.division = { 
+          [Op.in]: ["メンバー", "全員"],
+         };       
+    }else if(role === "user"){
+      alertConditions.division = { [Op.in]: ["ユーザー", "全員"] };
+    }else if(role === "manager"){
+      alertConditions.division = { [Op.in]: ["管理者"] };
+    }
+
+    const alerts = await Alert.findAll({
+      where: alertConditions,
+      include: [
+        {
+          model: AlertReadStatus,
+          as: "readStatuses",
+          required: false, 
+          where: { user_id: userId }, 
+          attributes: ["alert_id", "read_status"],
+        },
+      ],
+    });
+
+    const unreadAlerts = alerts.filter(alert => {
+      if (alert.readStatuses.length === 0) {
+        if (alert.division === "メンバー") {
+          return alert.user_id === userId || alert.user_id === 0 ;
+        }
+        return alert;
+      }      
+    });
+
+    const MessageNum =unreadAlerts.length;
 
     res.status(201).json({NotificationNum,MessageNum});
     

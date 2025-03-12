@@ -66,7 +66,7 @@ const createUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.body;
-   
+   console.log(req.user);
     if (!id) {
       return res.status(400).json({ message: 'All required fields must be filled' });
     }
