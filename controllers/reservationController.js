@@ -130,45 +130,47 @@ const updatReservation = async (req, res) => {
  
   
   try {
-    const { id,reservation_time,division,room_num,work_name,flat_name
-    } = req.body; // Extract name from the request body   
-    if (!id) {      
-      return res.status(400).json({ message: 'id is required' });
-    }
+    const {id, updateDate,start_time} = req.body;  
     
+    const [year, month, day] = updateDate.split("-").map(Number);
+    const [hour, minute] = start_time.split(":").map(Number);
+    const dd = new Date(year, month - 1, day, hour, minute);
+    const end_time = new Date(dd);
+    end_time.setHours(end_time.getHours() + 2);
+    
+    const formattedDate = dd.toISOString().slice(0, 19).replace("T", " ");  
     const reservation = await Reservation.findByPk(id);    
-    if (!reservation) {
-      logger.logError('ユーザーから存在しない予約の変更要請がありました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip);
-      return res.status(404).json({ message: 'Reservation not found' });
-    }    
+    console.log(formattedDate,end_time);
     
-    reservation.reservation_time = reservation_time || reservation.reservation_time; 
-    reservation.division = division || reservation.division;
-    reservation.room_num = room_num || reservation.room_num;
-    // reservation.user_name = user_name || reservation.user_name;
-    reservation.work_name = work_name || reservation.work_name;
-    reservation.flat_name = flat_name || reservation.flat_name;
-
-    if (reservation.reservation_time !== reservation_time && reservation.division !== division) {
-      logger.logImportantInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-      logger.logChangeInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-      
-    } else if(reservation.reservation_time !== reservation_time && reservation.division === division) {
-      logger.logImportantInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-      logger.logChangeInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-      
-    }else if(reservation.reservation_time === reservation_time && reservation.division !== division){
-      logger.logImportantInfo('予約番号'+reservation.id+'の予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-      logger.logChangeInfo('予約番号'+reservation.id+'の予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-    }else{
-      logger.logImportantInfo('予約番号'+reservation.id+'の予約が管理者によって変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-
-    }
-
+    // if (!reservation) {
+    //   logger.logError('ユーザーから存在しない予約の変更要請がありました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip);
+    //   return res.status(404).json({ message: 'Reservation not found' });
+    // }    
     
-    await reservation.save();
+    reservation.start_time = dd ; 
+    reservation.end_time = end_time;
+    // reservation.room_num = room_num || reservation.room_num;
+    // // reservation.user_name = user_name || reservation.user_name;
+    // reservation.work_name = work_name || reservation.work_name;
+    // reservation.flat_name = flat_name || reservation.flat_name;
 
-    return res.status(200).json(reservation);
+    // if (reservation.reservation_time !== reservation_time && reservation.division !== division) {
+    //   logger.logImportantInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
+    //   logger.logChangeInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
+      
+    // } else if(reservation.reservation_time !== reservation_time && reservation.division === division) {
+    //   logger.logImportantInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
+    //   logger.logChangeInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
+      
+    // }else if(reservation.reservation_time === reservation_time && reservation.division !== division){
+    //   logger.logImportantInfo('予約番号'+reservation.id+'の予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
+    //   logger.logChangeInfo('予約番号'+reservation.id+'の予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
+    // }else{
+    //   logger.logImportantInfo('予約番号'+reservation.id+'の予約が管理者によって変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
+
+    // }    
+     data = await reservation.save();
+    return res.status(200).json(data);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -332,9 +334,10 @@ const getReservations = async (req, res) => {
       where: {
         customer_name: customer_name,
         customer_phoneNum: Number(customer_phone),
-        start_time: { [Op.gt]: new Date() }, // Ensure correct date comparison
-      },
-    });      
+        start_time: { [Op.gt]: new Date() },
+    }}); 
+    console.log(bookedReservation);
+         
     res.status(201).json(bookedReservation);
   } catch (err) {
     console.error(err);
