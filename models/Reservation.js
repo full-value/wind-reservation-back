@@ -2,25 +2,37 @@ const { DataTypes, TIME, ENUM } = require('sequelize');
 const sequelize = require('./index');
 
 const Reservation = sequelize.define('Reservation', {
-  flat_name: {
+  worker_id: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: false,
   },
-  room_num:{
-    type:DataTypes.INTEGER,
-  },
-  work_name:{
+  customer_name:{
     type:DataTypes.STRING,
   },
-  reservation_time: {
-    type: DataTypes.TIME,
+  customer_address:{
+    type:DataTypes.STRING,
+  },
+  customer_phoneNum:{
+    type:DataTypes.STRING,
+  },
+  status: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue:'予約済み'
+  },
+  installation_type_id: {
+    type: DataTypes.INTEGER,
+    allowNull:true,
+    unique: false,
+  },
+  start_time:{
+    type:DataTypes.TIME,
     allowNull: false,
   },
-  division:{
-    type:DataTypes.STRING,
+  end_time:{
+    type:DataTypes.TIME,
     allowNull: false,
-    defaultValue:"morning"
   },},
   { 
     timestamps: false,

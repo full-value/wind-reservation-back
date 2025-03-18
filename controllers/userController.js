@@ -82,7 +82,22 @@ const deleteUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+const getMemberData = async (req, res) => {  
+  try {  
+    const userData = await User.findAll({ where: { role: "member" } });
+    const dataValues = userData.map(user => user.dataValues);
+    if (dataValues.length === 0) {
+      return res.status(404).json({ message: 'No matching works found for the given reservation' });
+    }   
+    
+    res.status(201).json(dataValues);
+    
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 module.exports = { 
-    getUserAllData, changeUser, createUser, deleteUser
+    getUserAllData, changeUser, createUser, deleteUser,getMemberData
   };

@@ -3,12 +3,15 @@ const {
         findFlat, findWork, findReservation, findChangeDate, 
         updatReservation, getChangeableDate, createReservation,
         getReservations,getReservationListData,deleteReservation
-        ,getDashboardData
+        ,getDashboardData,getAvailableDate
      } = require('../controllers/reservationController');
 
 const router = express.Router();
 
 // search Flat name
+
+router.post('/getAvailableDate',getAvailableDate);
+
 router.post('/findFlat',findFlat);
 router.post('/findWork',findWork);
 router.post('/findReservation',findReservation);

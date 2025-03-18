@@ -6,6 +6,16 @@ const User = require('../models/User');
 const logger = require('../logger');
 
 // Find Flat by partial match on the name
+
+const TOTAL_WORKERS = 3; // 作業者の合計人数
+const ALL_TIME_SLOTS = ["09:00", "12:00", "15:00", "18:00"]; // 利用可能な時間帯
+
+// 午前と午後の時間帯
+const AM_RANGE = ["08:00", "09:00", "10:00", "11:00", "12:00"];
+const PM_RANGE = ["13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
+
+
+
 const findFlat = async (req, res) => {
   try {
     const { name } = req.body; // Extract name from the request body
@@ -249,13 +259,66 @@ function __getDatesBetween(startTime, endTime) {
 }
 const createReservation = async (req, res) => {  
   try {
-    const {flat_name,room_num,work_name,reservation_time,division} = req.body;
-    if (!flat_name || !room_num || !work_name || !reservation_time || !division) {
+    const {customer_address,reservationDate,start_time,customer_name,customer_phoneNum} = req.body;
+
+    if (!customer_address||!reservationDate||!start_time||!customer_name||!customer_phoneNum) {
       return res.status(400).json({ message: 'All required fields must be filled' });
     }
-    const newReservation = await Reservation.create({flat_name,room_num,work_name,reservation_time,division});
-    logger.logImportantInfo('新しい予約が作成されました。'+'予約番号は'+newReservation.id+'です。', req.id, req.originalUrl, req.method, res.statusCode, "", req.ip); 
-    res.status(201).json(newReservation);
+
+    const allWorkers = await User.findAll({where:{role:"member"}, attributes: ['id'] });
+
+    const [year, month, day] = reservationDate.split("-").map(Number);
+    const [hour, minute] = start_time.split(":").map(Number);
+    const dd = new Date(year, month - 1, day, hour, minute);
+    const end_time = new Date(dd);
+    end_time.setHours(end_time.getHours() + 2);
+    
+    const formattedDate = dd.toISOString().slice(0, 19).replace("T", " ");  
+    const reservedWorkers = await Reservation.findAll({
+      where: {
+        start_time: formattedDate  
+      },
+      attributes: ['worker_id']
+    });
+    const reservedWorkerIds = new Set(reservedWorkers.map(worker => worker.worker_id));
+    
+    const availableWorkers = allWorkers
+      .map(worker => worker.id) 
+      .filter(id => !reservedWorkerIds.has(id))  
+      .sort((a, b) => a - b);  
+      
+      const workerReservations = await Reservation.findAll({
+        where: {
+          worker_id: availableWorkers,  // 予約されていない作業者のみ対象
+          start_time: { [Op.gt]: new Date() } // 未来の予約のみ
+        },
+        attributes: ['worker_id', [Sequelize.fn('COUNT', Sequelize.col('worker_id')), 'reservation_count']],
+        group: ['worker_id']
+      });   
+      let minReservations = Infinity;
+      let selectedWorkerId = null;
+  
+      if (workerReservations.length === 0) {
+        // 予約のない作業者がいる場合、そのうち最小のIDを選択
+        selectedWorkerId = availableWorkers.sort((a, b) => a - b)[0];
+      } else {
+        const reservationCountMap = Object.fromEntries(workerReservations.map(r => [r.worker_id, Number(r.get('reservation_count'))]));
+  
+        availableWorkers.forEach(workerId => {
+          const count = reservationCountMap[workerId] || 0; 
+          if (count < minReservations) {
+            minReservations = count;
+            selectedWorkerId = workerId;
+          }
+        });
+      }
+
+      const newReservatoin = await Reservation.create({worker_id:selectedWorkerId,customer_name,customer_address,customer_phoneNum,start_time:dd,end_time});
+      logger.logInfo(customer_name+'ユーザーによって新しい予約が登録されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip);
+      res.status(201).json(newReservatoin);
+
+
+    
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -264,21 +327,15 @@ const createReservation = async (req, res) => {
 const getReservations = async (req, res) => {  
   
   try {  
-    const {flat_name,room_num} = req.body;
-    const bookedReservations = await Reservation.findAll({where:{flat_name:flat_name,room_num:room_num}}); 
-
-    const dataValues = bookedReservations.map(reservation => {
-      const reservationTime = new Date(reservation.dataValues.reservation_time);
-      const formattedDate = reservationTime.toISOString().split('T')[0]; 
-      return {
-        ...reservation.dataValues,
-        reservation_time: formattedDate,
-      };
-    }); 
-    if (dataValues.length === 0) {
-      return res.status(404).json({ message: 'No matching works found for the given reservation' });
-    }   
-    res.status(201).json(dataValues);
+    const { customer_name, customer_phone } = req.body;
+    const bookedReservation = await Reservation.findAll({
+      where: {
+        customer_name: customer_name,
+        customer_phoneNum: Number(customer_phone),
+        start_time: { [Op.gt]: new Date() }, // Ensure correct date comparison
+      },
+    });      
+    res.status(201).json(bookedReservation);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -372,8 +429,88 @@ const getDashboardData = async (req, res) => {
   }
 };
 
+
+
+const getAvailableDate = async (req, res) => {
+  try {
+    const { selectedDate } = req.body;
+    console.log("Selected Date:", selectedDate);
+
+    // Validate input
+    if (!selectedDate) {
+      return res.status(400).json({ message: "selectedDate is required" });
+    }
+
+    // Fetch reservations
+    const reservations = await Reservation.findAll({
+      where: Sequelize.where(
+        Sequelize.fn('DATE', Sequelize.col('end_time')),
+        new Date(selectedDate)
+      ),
+      attributes: ['worker_id', 'start_time', 'end_time'], // Ensure required fields are selected
+    });   
+
+    const workerReservations = {};
+    reservations.forEach(res => {
+      if (!workerReservations[res.worker_id]) {
+        workerReservations[res.worker_id] = { AM: false, PM: false };
+      }
+
+      // Determine if the reservation is in the AM or PM range
+      const timeSlot = res.start_time < "12:00:00" ? "AM" : "PM";
+      const dateTime = new Date(res.start_time);
+      const hours = String(dateTime.getHours()).padStart(2, "0");
+      const minutes = String(dateTime.getMinutes()).padStart(2, "0");
+      const start_time = hours+":"+minutes; // Output: "08:49"
+            console.log(start_time);
+            
+      if (AM_RANGE.includes(start_time)) {
+        workerReservations[res.worker_id].AM = true;
+      } else if (PM_RANGE.includes(start_time)) {
+        workerReservations[res.worker_id].PM = true;
+      }
+    });
+    
+    console.log(workerReservations)
+    // Fetch all workers
+    const workers = await User.findAll({
+      where: { role: "member" },
+      attributes: ['id'],
+    });
+
+    const availableSlots = [];
+    
+    
+    // Check available slots per worker
+    workers.forEach(worker => {
+      const workerId = worker.dataValues.id;
+      const workerData = workerReservations[workerId] || { AM: false, PM: false };
+
+      if (!workerData.AM) {
+        availableSlots.push(...AM_RANGE.filter(time => ALL_TIME_SLOTS.includes(time)));
+      }
+
+      if (!workerData.PM) {
+        availableSlots.push(...PM_RANGE.filter(time => ALL_TIME_SLOTS.includes(time)));
+      }
+    });
+
+    // Remove duplicates
+    const uniqueAvailableSlots = [...new Set(availableSlots)];
+    console.log(uniqueAvailableSlots);
+
+    return res.json({
+      available: uniqueAvailableSlots.length > 0,
+      availableSlots: uniqueAvailableSlots,
+    });
+
+  } catch (err) {
+    console.error("Error fetching available slots:", err);
+    res.status(500).json({ message: 'サーバーエラー' });
+  }
+};
 module.exports = { 
   findFlat, findWork, findReservation, findChangeDate, 
   updatReservation,  getChangeableDate, createReservation,
    getReservations,getReservationListData,deleteReservation, 
-   getDashboardData};
+   getDashboardData,               getAvailableDate};
