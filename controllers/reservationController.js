@@ -141,35 +141,11 @@ const updatReservation = async (req, res) => {
     const formattedDate = dd.toISOString().slice(0, 19).replace("T", " ");  
     const reservation = await Reservation.findByPk(id);    
     console.log(formattedDate,end_time);
-    
-    // if (!reservation) {
-    //   logger.logError('ユーザーから存在しない予約の変更要請がありました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip);
-    //   return res.status(404).json({ message: 'Reservation not found' });
-    // }    
-    
+   
     reservation.start_time = dd ; 
     reservation.end_time = end_time;
-    // reservation.room_num = room_num || reservation.room_num;
-    // // reservation.user_name = user_name || reservation.user_name;
-    // reservation.work_name = work_name || reservation.work_name;
-    // reservation.flat_name = flat_name || reservation.flat_name;
-
-    // if (reservation.reservation_time !== reservation_time && reservation.division !== division) {
-    //   logger.logImportantInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-    //   logger.logChangeInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-      
-    // } else if(reservation.reservation_time !== reservation_time && reservation.division === division) {
-    //   logger.logImportantInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-    //   logger.logChangeInfo('予約番号'+reservation.id+'の予約が予約日'+reservation_time+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-      
-    // }else if(reservation.reservation_time === reservation_time && reservation.division !== division){
-    //   logger.logImportantInfo('予約番号'+reservation.id+'の予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-    //   logger.logChangeInfo('予約番号'+reservation.id+'の予約区分が'+division+'に変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-    // }else{
-    //   logger.logImportantInfo('予約番号'+reservation.id+'の予約が管理者によって変更されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip); 
-
-    // }    
      data = await reservation.save();
+
     return res.status(200).json(data);
   } catch (err) {
     console.error(err);
@@ -403,22 +379,22 @@ const getDashboardData = async (req, res) => {
 
     const monthlyReservations = await Reservation.findAll({
       attributes: [
-        [Sequelize.fn('DATE_FORMAT', Sequelize.col('reservation_time'), '%Y-%m'), 'month'],
+        [Sequelize.fn('DATE_FORMAT', Sequelize.col('start_time'), '%Y-%m'), 'month'],
         [Sequelize.fn('COUNT', Sequelize.col('id')), '予約件数'],
       ],
       where: {
-        reservation_time: {
+        start_time: {
           [Op.gte]: Sequelize.fn('DATE_SUB', Sequelize.fn('CURDATE'), Sequelize.literal('INTERVAL 12 MONTH')), // 現在から過去12ヶ月
           [Op.lte]: Sequelize.fn('CURDATE'), // 現在の日付
         },
       },
-      group: [Sequelize.fn('DATE_FORMAT', Sequelize.col('reservation_time'), '%Y-%m')],
+      group: [Sequelize.fn('DATE_FORMAT', Sequelize.col('start_time'), '%Y-%m')],
       order: [[Sequelize.literal('month'), 'ASC']],
       raw: true, 
     });
     const todayReservations = await Reservation.findAll({
       where: {
-        reservation_time: {
+        start_time: {
           [Op.eq]: Sequelize.fn('CURDATE'), // Match today's date
         },
       },
