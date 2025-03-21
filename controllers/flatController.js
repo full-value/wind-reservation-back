@@ -1,7 +1,7 @@
 const { Op } = require('sequelize'); // Import the Op operator from Sequelize
 const Flat = require('../models/Flat'); // Your Flat model
-const Work = require('../models/Work');
-const Reservation = require('../models/Reservation');
+// const Work = require('../models/Work');
+// const Reservation = require('../models/Reservation');
 const logger = require('../logger');
 // Find Flat by partial match on the name
 

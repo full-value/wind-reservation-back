@@ -4,7 +4,6 @@ const sequelize = require('./index');
 const Reservation = sequelize.define('Reservation', {
   worker_id: {
     type: DataTypes.STRING,
-    allowNull: false,
     unique: false,
   },
   customer_name:{

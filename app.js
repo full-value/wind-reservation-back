@@ -7,6 +7,8 @@ const workRoutes = require('./routes/workRoutes');
 const userRoutes = require('./routes/userRoutes');
 const logRoutes = require('./routes/logRoutes');
 const alertRoutes = require('./routes/alertRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+
 const { authenticate, authorizeRole } = require('./middleware/authMiddleware'); // Correct import
 const { v4: uuidv4 } = require('uuid');
 
@@ -97,6 +99,7 @@ app.use('/api/work',workRoutes);
 app.use('/api/user', authenticate, userRoutes);
 app.use('/api/log',  authenticate, logRoutes);
 app.use('/api/alert',authenticate, alertRoutes);
+app.use('/api/chat', chatRoutes);
 
 sequelize.sync()
   .then(() => {

@@ -3,6 +3,7 @@ const Flat = require('../models/Flat'); // Your Flat model
 const Work = require('../models/Work');
 const Reservation = require('../models/Reservation');
 const User = require('../models/User');
+const ChatHistory = require('../models/ChatHistory');
 const logger = require('../logger');
 
 // Find Flat by partial match on the name
@@ -130,20 +131,20 @@ const updatReservation = async (req, res) => {
  
   
   try {
-    const {id, updateDate,start_time} = req.body;  
+    const {id, start_time} = req.body;  
     
-    const [year, month, day] = updateDate.split("-").map(Number);
-    const [hour, minute] = start_time.split(":").map(Number);
-    const dd = new Date(year, month - 1, day, hour, minute);
-    const end_time = new Date(dd);
-    end_time.setHours(end_time.getHours() + 2);
+    // const [year, month, day] = start_time.split("-").map(Number);
+    // const [hour, minute] = start_time.split(":").map(Number);
+    // const dd = new Date(year, month - 1, day, hour, minute);
+    // const end_time = new Date(dd);
+    // end_time.setHours(end_time.getHours() + 2);
     
-    const formattedDate = dd.toISOString().slice(0, 19).replace("T", " ");  
+    // const formattedDate = dd.toISOString().slice(0, 19).replace("T", " ");  
     const reservation = await Reservation.findByPk(id);    
-    console.log(formattedDate,end_time);
+    // console.log(formattedDate,end_time);
    
-    reservation.start_time = dd ; 
-    reservation.end_time = end_time;
+    reservation.start_time = start_time ; 
+    // reservation.end_time = end_time;
      data = await reservation.save();
 
     return res.status(200).json(data);
@@ -237,61 +238,68 @@ function __getDatesBetween(startTime, endTime) {
 }
 const createReservation = async (req, res) => {  
   try {
-    const {customer_address,reservationDate,start_time,customer_name,customer_phoneNum} = req.body;
+    const {customer_address,start_time,customer_name,customer_phoneNum,history} = req.body;
 
-    if (!customer_address||!reservationDate||!start_time||!customer_name||!customer_phoneNum) {
+
+    if (!customer_address||!start_time||!customer_name||!customer_phoneNum) {
       return res.status(400).json({ message: 'All required fields must be filled' });
     }
-
-    const allWorkers = await User.findAll({where:{role:"member"}, attributes: ['id'] });
-
-    const [year, month, day] = reservationDate.split("-").map(Number);
-    const [hour, minute] = start_time.split(":").map(Number);
-    const dd = new Date(year, month - 1, day, hour, minute);
-    const end_time = new Date(dd);
-    end_time.setHours(end_time.getHours() + 2);
+   
     
-    const formattedDate = dd.toISOString().slice(0, 19).replace("T", " ");  
-    const reservedWorkers = await Reservation.findAll({
-      where: {
-        start_time: formattedDate  
-      },
-      attributes: ['worker_id']
-    });
-    const reservedWorkerIds = new Set(reservedWorkers.map(worker => worker.worker_id));
+    // const allWorkers = await User.findAll({where:{role:"member"}, attributes: ['id'] });
+ 
     
-    const availableWorkers = allWorkers
-      .map(worker => worker.id) 
-      .filter(id => !reservedWorkerIds.has(id))  
-      .sort((a, b) => a - b);  
+
+    // const [year, month, day] = start_time.split("-").map(Number);
+    // const [hour, minute] = start_time.split(":").map(Number);
+    // const dd = new Date(year, month - 1, day, hour, minute);
+    // const end_time = new Date(dd);
+    // end_time.setHours(end_time.getHours() + 2);
+    // console.log(end_time);
+    // const formattedDate = dd.toISOString().slice(0, 19).replace("T", " ");  
+    // const reservedWorkers = await Reservation.findAll({
+    //   where: {
+    //     start_time: formattedDate  
+    //   },
+    //   attributes: ['worker_id']
+    // });
+    // const reservedWorkerIds = new Set(reservedWorkers.map(worker => worker.worker_id));
+    
+    // console.log(reservedWorkerIds);
+    
+    // const availableWorkers = allWorkers
+    //   .map(worker => worker.id) 
+    //   .filter(id => !reservedWorkerIds.has(id))  
+    //   .sort((a, b) => a - b);  
       
-      const workerReservations = await Reservation.findAll({
-        where: {
-          worker_id: availableWorkers,  // 予約されていない作業者のみ対象
-          start_time: { [Op.gt]: new Date() } // 未来の予約のみ
-        },
-        attributes: ['worker_id', [Sequelize.fn('COUNT', Sequelize.col('worker_id')), 'reservation_count']],
-        group: ['worker_id']
-      });   
-      let minReservations = Infinity;
-      let selectedWorkerId = null;
+    //   const workerReservations = await Reservation.findAll({
+    //     where: {
+    //       worker_id: availableWorkers,  // 予約されていない作業者のみ対象
+    //       start_time: { [Op.gt]: new Date() } // 未来の予約のみ
+    //     },
+    //     attributes: ['worker_id', [Sequelize.fn('COUNT', Sequelize.col('worker_id')), 'reservation_count']],
+    //     group: ['worker_id']
+    //   });   
+    //   let minReservations = Infinity;
+    //   let selectedWorkerId = null;
   
-      if (workerReservations.length === 0) {
-        // 予約のない作業者がいる場合、そのうち最小のIDを選択
-        selectedWorkerId = availableWorkers.sort((a, b) => a - b)[0];
-      } else {
-        const reservationCountMap = Object.fromEntries(workerReservations.map(r => [r.worker_id, Number(r.get('reservation_count'))]));
+    //   if (workerReservations.length === 0) {
+    //     // 予約のない作業者がいる場合、そのうち最小のIDを選択
+    //     selectedWorkerId = availableWorkers.sort((a, b) => a - b)[0];
+    //   } else {
+    //     const reservationCountMap = Object.fromEntries(workerReservations.map(r => [r.worker_id, Number(r.get('reservation_count'))]));
   
-        availableWorkers.forEach(workerId => {
-          const count = reservationCountMap[workerId] || 0; 
-          if (count < minReservations) {
-            minReservations = count;
-            selectedWorkerId = workerId;
-          }
-        });
-      }
-
-      const newReservatoin = await Reservation.create({worker_id:selectedWorkerId,customer_name,customer_address,customer_phoneNum,start_time:dd,end_time});
+    //     availableWorkers.forEach(workerId => {
+    //       const count = reservationCountMap[workerId] || 0; 
+    //       if (count < minReservations) {
+    //         minReservations = count;
+    //         selectedWorkerId = workerId;
+    //       }
+    //     });
+    //   }
+      const formattedHistory = history.map(item => `${item.key}: ${item.value}`).join("\n");
+      const newReservatoin = await Reservation.create({customer_name,customer_address,customer_phoneNum,start_time:start_time,end_time:start_time});
+      const newHistory = await ChatHistory.create({reservation_id:newReservatoin.id, history:formattedHistory});
       logger.logInfo(customer_name+'ユーザーによって新しい予約が登録されました。', req.id, req.originalUrl, req.method, res.statusCode, req.user?req.user.id : null, req.ip);
       res.status(201).json(newReservatoin);
 
@@ -305,15 +313,13 @@ const createReservation = async (req, res) => {
 const getReservations = async (req, res) => {  
   
   try {  
-    const { customer_name, customer_phone } = req.body;
+    const { customer_name, customer_phoneNum } = req.body;
     const bookedReservation = await Reservation.findAll({
       where: {
         customer_name: customer_name,
-        customer_phoneNum: Number(customer_phone),
+        customer_phoneNum: Number(customer_phoneNum),
         start_time: { [Op.gt]: new Date() },
     }}); 
-    console.log(bookedReservation);
-         
     res.status(201).json(bookedReservation);
   } catch (err) {
     console.error(err);
@@ -328,13 +334,15 @@ const getReservationListData = async (req, res) => {
     const end = new Date(endTime);
     const bookedReservations = await Reservation.findAll({
       where: {      
-        reservation_time: {
+        start_time: {
           [Op.between]: [start, end], 
         },
       },
     });
+    
+    
     const dataValues = bookedReservations.map((reservation) => {
-      const reservationTime = new Date(reservation.dataValues.reservation_time);
+      const reservationTime = new Date(reservation.dataValues.start_time);
       const formattedDate = reservationTime.toISOString().split('T')[0]; 
       return {
         ...reservation.dataValues,
