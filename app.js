@@ -8,7 +8,9 @@ const userRoutes = require('./routes/userRoutes');
 const logRoutes = require('./routes/logRoutes');
 const alertRoutes = require('./routes/alertRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+require('dotenv').config();
 
+const PORT = process.env.PORT || 5001;
 const { authenticate, authorizeRole } = require('./middleware/authMiddleware'); // Correct import
 const { v4: uuidv4 } = require('uuid');
 
@@ -104,8 +106,8 @@ app.use('/api/chat', chatRoutes);
 sequelize.sync()
   .then(() => {
     console.log('Database connected');
-    app.listen(5000, () => {
-      console.log('Server running on port 5000');
+    app.listen(PORT, () => {
+      console.log('Server running on port '+PORT);
     });
   })
   .catch(err => {
