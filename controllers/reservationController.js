@@ -314,6 +314,8 @@ const getReservations = async (req, res) => {
   
   try {  
     const { customer_name, customer_phoneNum } = req.body;
+    console.log(customer_name,customer_phoneNum);
+    
     const bookedReservation = await Reservation.findAll({
       where: {
         customer_name: customer_name,
@@ -380,11 +382,15 @@ const deleteReservation = async (req, res) => {
 };
 const getDashboardData = async (req, res) => {
   try {
-    totalFlatItems = await Flat.count();
-    totalWorkItems = await Work.count();
+   
     totalUserItems = await User.count();
     totalReservationItems = await Reservation.count();
-
+    futureReservationItems = await Reservation.count({
+      where: {
+        start_time: { [Op.gt]: new Date() },
+      }
+    });
+    
     const monthlyReservations = await Reservation.findAll({
       attributes: [
         [Sequelize.fn('DATE_FORMAT', Sequelize.col('start_time'), '%Y-%m'), 'month'],
@@ -399,17 +405,8 @@ const getDashboardData = async (req, res) => {
       group: [Sequelize.fn('DATE_FORMAT', Sequelize.col('start_time'), '%Y-%m')],
       order: [[Sequelize.literal('month'), 'ASC']],
       raw: true, 
-    });
-    const todayReservations = await Reservation.findAll({
-      where: {
-        start_time: {
-          [Op.eq]: Sequelize.fn('CURDATE'), // Match today's date
-        },
-      },
-      raw: true, 
-    });
-
-    res.status(200).json({totalFlatItems,totalWorkItems,totalUserItems,totalReservationItems,monthlyReservations,todayReservations});
+    });   
+    res.status(200).json({futureReservationItems,totalUserItems,totalReservationItems,monthlyReservations});
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'サーバーエラー' });
@@ -427,7 +424,6 @@ const getAvailableDate = async (req, res) => {
     if (!selectedDate) {
       return res.status(400).json({ message: "selectedDate is required" });
     }
-
     // Fetch reservations
     const reservations = await Reservation.findAll({
       where: Sequelize.where(
