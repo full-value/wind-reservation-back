@@ -127,32 +127,34 @@ const findChangeDate = async (req, res) => {
   }
 };
 
-const updatReservation = async (req, res) => {
- 
-  
+const updateReservation = async (req, res) => {
   try {
-    const {id, start_time} = req.body;  
-    
-    // const [year, month, day] = start_time.split("-").map(Number);
-    // const [hour, minute] = start_time.split(":").map(Number);
-    // const dd = new Date(year, month - 1, day, hour, minute);
-    // const end_time = new Date(dd);
-    // end_time.setHours(end_time.getHours() + 2);
-    
-    // const formattedDate = dd.toISOString().slice(0, 19).replace("T", " ");  
-    const reservation = await Reservation.findByPk(id);    
-    // console.log(formattedDate,end_time);
-   
-    reservation.start_time = start_time ; 
-    // reservation.end_time = end_time;
-     data = await reservation.save();
+    const { id, ...updateFields } = req.body; // id を分離し、更新対象のフィールドを取得
 
-    return res.status(200).json(data);
+    const reservation = await Reservation.findByPk(Number(id));
+
+    if (!reservation) {
+      return res.status(404).json({ message: 'Reservation not found' });
+    }
+
+    // null ではないプロパティのみを更新
+    const filteredFields = Object.fromEntries(
+      Object.entries(updateFields).filter(([_, value]) => value !== null && value !== undefined)
+    );
+
+    if (Object.keys(filteredFields).length === 0) {
+      return res.status(400).json({ message: 'No valid fields to update' });
+    }
+
+    const updatedReservation = await reservation.update(filteredFields);
+
+    return res.status(200).json(updatedReservation);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 const findWork = async (req, res) => {
   
   try {
@@ -248,7 +250,6 @@ const createReservation = async (req, res) => {
     
     // const allWorkers = await User.findAll({where:{role:"member"}, attributes: ['id'] });
  
-    
 
     // const [year, month, day] = start_time.split("-").map(Number);
     // const [hour, minute] = start_time.split(":").map(Number);
@@ -390,6 +391,11 @@ const getDashboardData = async (req, res) => {
         start_time: { [Op.gt]: new Date() },
       }
     });
+    cancelReservationNum = await Reservation.count({
+      where: {
+        status: "キャンセル",
+      }
+    });
     
     const monthlyReservations = await Reservation.findAll({
       attributes: [
@@ -406,14 +412,42 @@ const getDashboardData = async (req, res) => {
       order: [[Sequelize.literal('month'), 'ASC']],
       raw: true, 
     });   
-    res.status(200).json({futureReservationItems,totalUserItems,totalReservationItems,monthlyReservations});
+    res.status(200).json({futureReservationItems,totalUserItems,totalReservationItems,monthlyReservations,cancelReservationNum});
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'サーバーエラー' });
   }
 };
-
-
+const getAllReservationData = async (req, res) => {
+  try {
+ 
+    pastReservationItems = await Reservation.findAll({
+      where: {
+        start_time: { [Op.lte]: new Date() },
+      }
+    });
+   
+    res.status(200).json(pastReservationItems);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'サーバーエラー' });
+  }
+};
+const getFutureReservationData = async (req, res) => {
+  try {
+ 
+    pastReservationItems = await Reservation.findAll({
+      where: {
+        start_time: { [Op.gte]: new Date() },
+      }
+    });
+   
+    res.status(200).json(pastReservationItems);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'サーバーエラー' });
+  }
+};
 
 const getAvailableDate = async (req, res) => {
   try {
@@ -462,8 +496,6 @@ const getAvailableDate = async (req, res) => {
     });
 
     const availableSlots = [];
-    
-    
     // Check available slots per worker
     workers.forEach(worker => {
       const workerId = worker.dataValues.id;
@@ -492,8 +524,25 @@ const getAvailableDate = async (req, res) => {
     res.status(500).json({ message: 'サーバーエラー' });
   }
 };
+const getChatHistoryByid = async (req, res) => {
+  try {
+    ChatHistories = await ChatHistory.findAll({
+      where: {
+        reservation_id: req.body.id,
+      }
+    });
+   
+    res.status(200).json(ChatHistories);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'サーバーエラー' });
+  }
+};
 module.exports = { 
   findFlat, findWork, findReservation, findChangeDate, 
-  updatReservation,  getChangeableDate, createReservation,
+  updateReservation,  getChangeableDate, createReservation,
    getReservations,getReservationListData,deleteReservation, 
-   getDashboardData,               getAvailableDate};
+   getDashboardData,   getAllReservationData, getAvailableDate,
+   getFutureReservationData,getChatHistoryByid
+  
+  };

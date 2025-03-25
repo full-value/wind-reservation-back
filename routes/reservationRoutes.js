@@ -1,9 +1,10 @@
 const express = require('express');
 const { 
         findFlat, findWork, findReservation, findChangeDate, 
-        updatReservation, getChangeableDate, createReservation,
+        updateReservation, getChangeableDate, createReservation,
         getReservations,getReservationListData,deleteReservation
-        ,getDashboardData,getAvailableDate
+        ,getDashboardData,getAvailableDate,getAllReservationData,
+        getFutureReservationData,getChatHistoryByid
      } = require('../controllers/reservationController');
 
 const router = express.Router();
@@ -16,13 +17,15 @@ router.post('/findFlat',findFlat);
 router.post('/findWork',findWork);
 router.post('/findReservation',findReservation);
 router.post('/findChangeDate',findChangeDate);
-router.post('/updateReservation',updatReservation);
+router.post('/updateReservation',updateReservation);
 router.post('/getChangeableDate',getChangeableDate);
 router.post('/createReservation',createReservation);
 router.post('/getReservations',getReservations);
 router.post('/getReservationListData',getReservationListData);
 router.post('/deleteReservation',deleteReservation);
 router.get('/getDashboardData',getDashboardData);
-
+router.get('/getAllReservationData',getAllReservationData);
+router.get('/getFutureReservationData',getFutureReservationData);
+router.post('/getChatHistoryByid',getChatHistoryByid);
 
 module.exports = router;
